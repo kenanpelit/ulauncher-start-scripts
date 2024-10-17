@@ -1,6 +1,7 @@
 # Ulauncher Recent Files Extension
 
 > A [Ulauncher](https://ulauncher.io/) extension
+
 Open and search your recent files. 
 
 Filter by:
