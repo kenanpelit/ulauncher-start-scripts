@@ -1,32 +1,18 @@
 {
   "required_api_version": "^2.0.0",
-  "name": "Demo",
-  "description": "Demo extension",
-  "developer_name": "Aleksandr Gornostal",
-  "icon": "images/icon.png",
+  "name": "Recent Files",
+  "description": "Search and filter recently opened files",
+  "developer_name": "cardoprimo",
+  "icon": "images/icon.svg",
   "options": {
-    "query_debounce": 0.05
+    "query_debounce": 0.1
   },
   "preferences": [
     {
-      "id": "demo_kw",
+      "id": "recents_kw",
       "type": "keyword",
-      "name": "Demo",
-      "default_value": "dm"
-    },
-    {
-      "id": "item_name",
-      "type": "input",
-      "name": "Item name",
-      "description": "Name for each item",
-      "default_value": "Item"
-    },
-    {
-      "id": "memo",
-      "type": "text",
-      "name": "Memo",
-      "description": "Write something here",
-      "default_value": ""
+      "name": "Recents",
+      "default_value": "r"
     }
   ]
 }
