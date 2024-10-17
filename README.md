@@ -1,14 +1,20 @@
 # Ulauncher Recent Files Extension
 
-Open and Search your recent files. (r)
+> A [Ulauncher](https://ulauncher.io/) extension
+Open and search your recent files. 
 
 Filter by:
 
-- Directories (r d)
-- Video (r v)
-- Audio (r a)
-- Images (r i)
-- Files (r f)
+- Directories (d)
+- Video (v)
+- Audio (a)
+- Images (i)
+- Files (f)
 
-![ulauncher-recent-files preview rtest]()
-![ulauncher-recent-files preview r a]()
+## General search example
+(![ulauncher-recent-files-rtest](https://github.com/user-attachments/assets/82847f39-e875-45c5-8bc1-57f5622979d7)
+)
+
+## Audio Search example
+![ulauncher-recent-files-ra](https://github.com/user-attachments/assets/d2779111-0360-4517-b729-b157a6bc26f7)
+
