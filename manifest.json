@@ -1,18 +1,19 @@
 {
   "required_api_version": "^2.0.0",
-  "name": "Recent Files",
-  "description": "Search and filter recently opened files",
-  "developer_name": "cardoprimo",
+  "name": "Start Scripts",
+  "description": "Search and run start- scripts",
+  "developer_name": "kenanpelit",
   "icon": "images/icon.svg",
   "options": {
     "query_debounce": 0.1
   },
   "preferences": [
     {
-      "id": "recents_kw",
+      "id": "kw",
       "type": "keyword",
-      "name": "Recents",
-      "default_value": "r"
+      "name": "Start Scripts",
+      "description": "Keyword to activate start scripts search",
+      "default_value": "s"
     }
   ]
 }

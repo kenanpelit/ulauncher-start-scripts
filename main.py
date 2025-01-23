@@ -1,191 +1,78 @@
 import logging
 import os
-import collections
-import mimetypes
-from urllib.parse import unquote
-
 from pathlib import Path
 from ulauncher.api.client.Extension import Extension
 from ulauncher.api.client.EventListener import EventListener
-from ulauncher.api.shared.event import ( 
-    KeywordQueryEvent, 
-    PreferencesEvent, 
-    PreferencesUpdateEvent,
+from ulauncher.api.shared.event import (
+    KeywordQueryEvent,
+    PreferencesEvent,
+    PreferencesUpdateEvent
 )
-
 from ulauncher.api.shared.item.ExtensionSmallResultItem import ExtensionSmallResultItem
 from ulauncher.api.shared.action.RenderResultListAction import RenderResultListAction
-from ulauncher.api.shared.action.OpenAction import OpenAction
-import xml.etree.ElementTree as ET
-
-try:
-    from gi.repository import Gtk, Gio
-except:
-    Gtk, Gio = None, None
-
-DEFAULT_ICON = "images/icon.svg"
-IMAGE_EXTENSIONS = (
-    '.png',
-    '.jpg', 
-    '.jpeg',
-    '.svg',
-    '.gif',
-)
+from ulauncher.api.shared.action.RunScriptAction import RunScriptAction
 
 logger = logging.getLogger(__name__)
 
-def get_icon_for_file(path, size=256):
-    """
-    Get the gtk icon path for a specific file or folder (defined by its path).
-    """
-    if path.name.lower().endswith(IMAGE_EXTENSIONS):
-        return str(path)
+DEFAULT_ICON = "images/icon.svg"
+SCRIPTS_PATH = "/etc/profiles/per-user/kenan/bin"
 
-    if Gtk is not None:
-        try: 
-            if path.is_dir():
-                icon = Gio.content_type_get_icon("folder")
-            else:
-                mimetype = Gio.content_type_guess(path.name)[0]
-                icon = Gio.content_type_get_icon(mimetype)
+def search_start_scripts(search_term=""):
+    """Search for scripts starting with 'start-' in the scripts directory"""
+    scripts_dir = Path(SCRIPTS_PATH)
+    if not scripts_dir.exists():
+        raise FileNotFoundError(f'Scripts directory not found: {SCRIPTS_PATH}')
 
-            theme = Gtk.IconTheme.get_default()
-            actual_icon = theme.choose_icon(icon.get_names(), size, 0)
-            if actual_icon:
-                return actual_icon.get_filename()
-        except Exception:
-            logger.exception("Failed to get icon for path: %s", path)
+    scripts = []
+    for script in scripts_dir.glob("start-*"):
+        if script.is_file() and os.access(script, os.X_OK):
+            if search_term.lower() in script.name.lower():
+                scripts.append(script)
 
+    return sorted(scripts)
 
-    return DEFAULT_ICON
-
-def search_recent_files(search_term, file_type=None):
-    recent_files = collections.deque()
-
-    possible_locations = [
-    "~/.local/share/recently-used.xbel",
-    "~/.gnome2/recently-used.xbel",
-    "~/.kde/share/apps/RecentDocuments/recently-used.xbel",
-    "~/.xfce4/recently-used.xbel"
-]
-
-    xbel_file = next((os.path.expanduser(location) for location in possible_locations if os.path.exists(os.path.expanduser(location))), None)
-
-    if xbel_file is None:
-        raise FileNotFoundError('No recently-used.xbel file found')
-
-    # Parse the XML file
-    
-    try:
-        tree = ET.parse(xbel_file)
-        root = tree.getroot()
-    except ET.ParseError as e:
-        raise RuntimeError(f"Error parsing XBEL file: {e}")
-
-    # Iterate over the <bookmark> elements
-    for bookmark in root.findall('bookmark'):
-        # Get the file path
-        file_path = Path(unquote(bookmark.attrib.get('href').removeprefix('file://')))
-        
-        # Check if the file still exists
-        if not file_path.exists():
-            continue
-
-        # Check if file_type is specified and matches the file type
-        if file_type is not None:
-            if file_type == 'f' and not file_path.is_file():
-                continue
-            elif file_type == 'd' and not file_path.is_dir():
-                continue
-            elif file_type in ['v','i','a']:
-                mime_type = mimetypes.guess_type(file_path)[0]
-                if not mime_type:
-                    continue
-                elif file_type == 'i':
-                    if not mime_type.startswith('image/'):
-                        continue
-                elif file_type == 'v':
-                    if not mime_type.startswith('video/'):
-                        continue
-                elif file_type == 'a':
-                    if not mime_type.startswith('audio/'):
-                        continue
-            
-
-        # Check if the file path matches the search term
-        if search_term in file_path.name.lower():
-            if len(search_term) > 2:
-                logger.info('Found recent file: %s', file_path)
-            recent_files.append(file_path)
-
-
-    recent_files = list(reversed(recent_files))
-
-    logger.info('Recent files found: %s', len(recent_files))
-
-    return recent_files
-
-
-
-class RecentFilesExtension(Extension):
-
+class StartScriptsExtension(Extension):
     def __init__(self):
-        super(RecentFilesExtension, self).__init__()
+        super(StartScriptsExtension, self).__init__()
         self.subscribe(KeywordQueryEvent, KeywordQueryEventListener())
         self.subscribe(PreferencesEvent, PreferencesEventListener())
         self.subscribe(PreferencesUpdateEvent, PreferencesEventListener())
 
-
 class KeywordQueryEventListener(EventListener):
-
     def on_event(self, event, extension):
         items = []
-        arguments = event.get_argument() or ""
-
-        parts = arguments.split()
-        if parts and parts[0] in ('f', 'd', 'i', 'v', 'a'):
-            file_type = parts[0]
-            search_term = ' '.join(parts[1:]).lower() if len(parts) > 1 else ''
-        else:
-            file_type = None
-            search_term = arguments.lower()
-
-        logger.info('file_type: %s | search_term: %s', file_type, search_term)
+        query = event.get_argument() or ""
 
         try:
-            recent_files = search_recent_files(search_term, file_type)
+            scripts = search_start_scripts(query)
         except FileNotFoundError as e:
             logger.error(e)
-            items.append(ExtensionSmallResultItem(icon=DEFAULT_ICON, name='No recently-used.xbel found'))
-            return RenderResultListAction(items)
-        except RuntimeError as e:
-            logger.error(e)
-            items.append(ExtensionSmallResultItem(icon=DEFAULT_ICON, name='No recently-used.xbel found'))
-            return RenderResultListAction(items)
-
-        if not recent_files:
-            logger.error('No recent files found')
-            items.append(ExtensionSmallResultItem(icon=DEFAULT_ICON, name='No recent files found'))
+            items.append(ExtensionSmallResultItem(
+                icon=DEFAULT_ICON,
+                name='Scripts directory not found'
+            ))
             return RenderResultListAction(items)
 
-        for recent_file in recent_files[:20]:
-            file_name = recent_file.name
-            items.append(ExtensionSmallResultItem(icon=get_icon_for_file(recent_file),
-                                             name=file_name,
-                                             on_enter=OpenAction(recent_file)))
+        if not scripts:
+            items.append(ExtensionSmallResultItem(
+                icon=DEFAULT_ICON,
+                name='No matching scripts found'
+            ))
+            return RenderResultListAction(items)
+
+        for script in scripts[:20]:
+            items.append(ExtensionSmallResultItem(
+                icon=DEFAULT_ICON,
+                name=script.name,
+                on_enter=RunScriptAction(str(script))
+            ))
 
         return RenderResultListAction(items)
 
-
 class PreferencesEventListener(EventListener):
-	def on_event(self, event, extension):
-		extension.keyword = event.preferences["recents_kw"]
-
-
-class PreferencesUpdateEventListener(EventListener):
-	def on_event(self, event, extension):
-		if event.id == "recents_kw":
-			extension.keyword = event.new_value
+    def on_event(self, event, extension):
+        extension.keyword = event.preferences["kw"]
 
 if __name__ == '__main__':
-    RecentFilesExtension().run()
+    StartScriptsExtension().run()
+
